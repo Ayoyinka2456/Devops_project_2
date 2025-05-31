@@ -31,7 +31,7 @@ pipeline {
 
         stage('Dockerize') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker_login', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'docker_credential', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
                     sh """
                         sudo docker rmi ${DOCKERHUB_USER}/${IMAGE_ALIAS}:${IMAGE_TAG} || true
                         sudo docker build -t ${DOCKERHUB_USER}/${IMAGE_ALIAS}:${IMAGE_TAG} .
@@ -44,7 +44,7 @@ pipeline {
 
         stage('Deploy Container') {
             steps {
-                withCredentials([usernamePassword(credentialsId: 'docker_login', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                withCredentials([usernamePassword(credentialsId: 'docker_credential', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
                     sh """
                         sudo docker container stop ${IMAGE_ALIAS} || true
                         sudo docker container rm ${IMAGE_ALIAS} || true
