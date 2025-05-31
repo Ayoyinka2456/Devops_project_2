@@ -1,14 +1,17 @@
-#Unfinished
+
+# create jenkins crredentials
+# aws_creds = AWS_ACCESS_KEY_ID AMD ACCESS_SECTER_KEY
+# docker_login = DOCKER USERNAME AND PASSWORD
+
 pipeline {
     agent {
         label 'Any'  // Node label where Docker is available
     }
 
     environment {
-        DOCKERHUB_CREDENTIALS = credentials('docker_login')  // Jenkins credentials ID
-        appName = "springboot"
+        IMAGE_ALIAS = "springboot"
         IMAGE_TAG = "1"
-        DOCKER_IMAGE = "${DOCKERHUB_CREDENTIALS_USR}/${appName}"
+        AWS_DEFAULT_REGION = 'us-east-2'
     }
 
     stages {
@@ -28,27 +31,73 @@ pipeline {
 
         stage('Dockerize') {
             steps {
-                echo "Building and pushing Docker image..."
-                sh """
-                    sudo docker images
-                    sudo docker rmi ${DOCKER_IMAGE}:${IMAGE_TAG} || true
-                    sudo docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} .
-                    sudo docker login -u \"${DOCKERHUB_CREDENTIALS_USR}\" -p \"${DOCKERHUB_CREDENTIALS_PSW}\"
-                    sudo docker push ${DOCKER_IMAGE}:${IMAGE_TAG}
-                """
+                withCredentials([usernamePassword(credentialsId: 'docker_login', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                    sh """
+                        sudo docker rmi ${DOCKERHUB_USER}/${IMAGE_ALIAS}:${IMAGE_TAG} || true
+                        sudo docker build -t ${DOCKERHUB_USER}/${IMAGE_ALIAS}:${IMAGE_TAG} .
+                        sudo docker login -u ${DOCKERHUB_USER} -p ${DOCKERHUB_PASS}
+                        sudo docker push ${DOCKERHUB_USER}/${IMAGE_ALIAS}:${IMAGE_TAG}
+                    """
+                }
             }
         }
 
         stage('Deploy Container') {
             steps {
-                echo "Stopping any existing container and running new one on port 9000..."
-                sh """
-                    sudo docker container stop ${appName} || true
-                    sudo docker container rm ${appName} || true
-                    sudo docker run -itd -p 9000:8080 --name ${appName} ${DOCKER_IMAGE}:${IMAGE_TAG}
-                    sudo docker ps
-                    echo "Spring Boot app is now accessible on port 9000."
-                """
+                withCredentials([usernamePassword(credentialsId: 'docker_login', usernameVariable: 'DOCKERHUB_USER', passwordVariable: 'DOCKERHUB_PASS')]) {
+                    sh """
+                        sudo docker container stop ${IMAGE_ALIAS} || true
+                        sudo docker container rm ${IMAGE_ALIAS} || true
+                        sudo docker run -itd -p 8080:8080 --name ${IMAGE_ALIAS} ${DOCKERHUB_USER}/${IMAGE_ALIAS}:${IMAGE_TAG}
+                        sudo docker ps
+                        echo "Spring Boot app is now accessible on port 9000."
+                    """
+                }
+            }
+        }
+
+        stage('Create EKS Cluster and Deploy App') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'aws_creds', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+                    sh """
+                        chmod +x install_tools.sh
+                        ./install_tools.sh
+                        mkdir -p ~/.aws
+
+                        cat > ~/.aws/credentials <<EOL
+[default]
+aws_access_key_id=${AWS_ACCESS_KEY_ID}
+aws_secret_access_key=${AWS_SECRET_ACCESS_KEY}
+EOL
+
+                        cat > ~/.aws/config <<EOL
+[default]
+region = ${AWS_DEFAULT_REGION}
+output = json
+EOL
+
+                        eksctl create cluster \\
+                            --name demo-cluster \\
+                            --version 1.30 \\
+                            --region ${AWS_DEFAULT_REGION} \\
+                            --nodegroup-name demo-workers \\
+                            --node-type t2.micro \\
+                            --nodes 3 \\
+                            --nodes-min 1 \\
+                            --nodes-max 4 \\
+                            --managed
+
+                        sleep 300
+
+                        aws eks update-kubeconfig --name demo-cluster --region ${AWS_DEFAULT_REGION}
+                        sleep 60
+
+                        kubectl apply -f deployment.yml
+                        sleep 30
+
+                        kubectl get all -o wide
+                    """
+                }
             }
         }
     }
