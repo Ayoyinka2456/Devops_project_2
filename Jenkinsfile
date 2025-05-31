@@ -5,7 +5,7 @@
 
 pipeline {
     agent {
-        label 'Any'  // Node label where Docker is available
+        label 'springboot_node'  // Node label where Docker is available
     }
 
     environment {
