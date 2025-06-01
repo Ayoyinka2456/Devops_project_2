@@ -1,0 +1,16 @@
+---
+# values.yaml (for Helm installation of Prometheus & Grafana with defaults)
+prometheus:
+  service:
+    type: ClusterIP
+  server:
+    service:
+      type: ClusterIP
+
+grafana:
+  service:
+    type: ClusterIP
+  adminUser: admin
+  adminPassword: admin
+  persistence:
+    enabled: false
