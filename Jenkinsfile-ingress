@@ -1,0 +1,35 @@
+pipeline {
+  agent any
+  environment {
+    AWS_DEFAULT_REGION = 'us-east-2'
+  }
+  stages {
+    stage('Build Docker Image') {
+      steps {
+        sh 'docker build -t ayoyinka/springboot:1 .'
+      }
+    }
+    stage('Push Image') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', usernameVariable: 'USERNAME', passwordVariable: 'PASSWORD')]) {
+          sh 'echo $PASSWORD | docker login -u $USERNAME --password-stdin'
+          sh 'docker push ayoyinka/springboot:1'
+        }
+      }
+    }
+    stage('Deploy to Kubernetes') {
+      steps {
+        sh 'kubectl apply -f deployment-ingress.yml'
+      }
+    }
+    stage('Install Monitoring') {
+      steps {
+        sh '''
+          helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          helm repo update
+          helm install monitoring prometheus-community/kube-prometheus-stack -f prom-grafana.yaml
+        '''
+      }
+    }
+  }
+}
