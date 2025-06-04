@@ -8,6 +8,7 @@ module "eks" {
   cluster_version = "1.27"
   subnets         = module.vpc.private_subnets
   vpc_id          = module.vpc.vpc_id
+  version = "17.24.0"
 
   node_groups = {
     default = {
