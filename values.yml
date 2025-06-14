@@ -1,0 +1,14 @@
+grafana:
+  adminPassword: admin123
+  service:
+    type: LoadBalancer
+  ingress:
+    enabled: false
+
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorSelector: {}
+    serviceMonitorNamespaceSelector: {}
+  service:
+    type: LoadBalancer
