@@ -1,14 +1,10 @@
 grafana:
   adminPassword: admin123
   service:
-    type: LoadBalancer
-  ingress:
-    enabled: false
+    type: ClusterIP
+    port: 80
 
 prometheus:
-  prometheusSpec:
-    serviceMonitorSelectorNilUsesHelmValues: false
-    serviceMonitorSelector: {}
-    serviceMonitorNamespaceSelector: {}
   service:
-    type: LoadBalancer
+    type: ClusterIP
+    port: 9090
