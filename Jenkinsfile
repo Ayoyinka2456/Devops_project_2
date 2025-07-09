@@ -59,7 +59,7 @@ pipeline {
                     sudo systemctl status docker --no-pager
                     sudo rm -rf *
                 '''
-                git branch: 'main', url: 'https://github.com/Ayoyinka2456/Devops_project_2.git'
+                git branch: 'main', url: 'https://github.com/Ayoyinka2456/Springboot_project.git'
             }
         }
 
